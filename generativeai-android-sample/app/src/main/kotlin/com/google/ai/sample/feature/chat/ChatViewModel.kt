@@ -20,7 +20,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.asTextOrNull
-import com.google.ai.client.generativeai.type.content
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,14 +30,16 @@ class ChatViewModel(
 ) : ViewModel() {
     private val chat = generativeModel.startChat(
         history = listOf(
-            content(role = "user") { text("Hello, I have 2 dogs in my house.") },
-            content(role = "model") { text("Great to meet you. What would you like to know?") }
+            //content(role = "user") { text("現在開始只說中文") },
+            //content(role = "model") { text("Great to meet you. What would you like to know?") }
         )
     )
 
+    private val chatStream = generativeModel
+
     private val _uiState: MutableStateFlow<ChatUiState> =
         MutableStateFlow(ChatUiState(chat.history.map { content ->
-            // Map the initial messages
+            // Map the initial messages＄
             ChatMessage(
                 text = content.parts.first().asTextOrNull() ?: "",
                 participant = if (content.role == "user") Participant.USER else Participant.MODEL,
@@ -84,5 +85,50 @@ class ChatViewModel(
                 )
             }
         }
+    }
+
+    fun streamingTalk(userMessage: String) {
+        // Add a pending message
+        _uiState.value.addMessage(
+            ChatMessage(
+                text = userMessage,
+                participant = Participant.USER,
+                isPending = false
+            )
+        )
+
+        viewModelScope.launch {
+            try {
+                //val response = chat.sendMessage(userMessage)
+                var outputContent = ""
+                _uiState.value.addMessage(
+                    ChatMessage(
+                        text = "...",
+                        participant = Participant.MODEL,
+                        isPending = true
+                    )
+                )
+
+                chatStream.generateContentStream(userMessage)
+                    .collect { response ->
+                        outputContent += response.text
+                        _uiState.value.updateStreamingTalk(outputContent)
+                    }
+
+                _uiState.value.replaceLastPendingMessage()
+            } catch (e: Exception) {
+                _uiState.value.replaceLastPendingMessage()
+                _uiState.value.addMessage(
+                    ChatMessage(
+                        text = e.localizedMessage,
+                        participant = Participant.ERROR
+                    )
+                )
+            }
+        }
+    }
+
+    fun simulateStreamingTalk() {
+        _uiState.value.simulateStreamingTalk()
     }
 }

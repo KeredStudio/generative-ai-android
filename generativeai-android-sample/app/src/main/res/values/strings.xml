@@ -37,4 +37,6 @@
     <!-- Chat sample strings -->
     <string name="chat_label">Message</string>
     <string name="action_send">Send</string>
+    <string name="chat2_title">測試</string>
+    <string name="chat2_desc">就測試</string>
 </resources>

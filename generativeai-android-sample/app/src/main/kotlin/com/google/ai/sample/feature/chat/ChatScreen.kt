@@ -16,6 +16,8 @@
 
 package com.google.ai.sample.feature.chat
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,6 +32,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -50,15 +54,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.ai.sample.GenerativeViewModelFactory
 import com.google.ai.sample.R
-import com.google.ai.sample.ui.theme.GenerativeAISample
 import kotlinx.coroutines.launch
 
 @Composable
@@ -94,6 +99,52 @@ internal fun ChatRoute(
     }
 }
 
+@Preview
+@Composable
+internal fun ChatRoute2(
+    chatViewModel: ChatViewModel = viewModel(factory = GenerativeViewModelFactory)
+) {
+    val chatUiState by chatViewModel.uiState.collectAsState()
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+
+    initPrompts(chatViewModel)
+
+    Scaffold(
+        bottomBar = {
+            MessageInput(
+                onSendMessage = { inputText ->
+                    chatViewModel.sendMessage(inputText)
+                },
+                resetScroll = {
+                    coroutineScope.launch {
+                        listState.scrollToItem(0)
+                    }
+                },
+                simulateStreamingTalk = {
+                    chatViewModel.simulateStreamingTalk()
+                },
+                streamingTalk = { inputText ->
+                    chatViewModel.streamingTalk(inputText)
+                }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+        ) {
+            // Messages List
+            ChatList(chatUiState.messages, listState)
+        }
+    }
+}
+
+fun initPrompts(chatViewModel: ChatViewModel) {
+    chatViewModel.sendMessage("現在開始只用繁體中文對談 #zh-tw")
+}
+
 @Composable
 fun ChatList(
     chatMessages: List<ChatMessage>,
@@ -109,10 +160,12 @@ fun ChatList(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatBubbleItem(
     chatMessage: ChatMessage
 ) {
+    val clipboardManager = LocalClipboardManager.current
     val isModelMessage = chatMessage.participant == Participant.MODEL ||
             chatMessage.participant == Participant.ERROR
 
@@ -141,9 +194,9 @@ fun ChatBubbleItem(
             .fillMaxWidth()
     ) {
         Text(
-            text = chatMessage.participant.name,
+            text = chatMessage.participant.getName(),
             style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(bottom = 4.dp)
+            modifier = Modifier.padding(bottom = 4.dp, end = 8.dp)
         )
         Row {
             if (chatMessage.isPending) {
@@ -157,7 +210,14 @@ fun ChatBubbleItem(
                 Card(
                     colors = CardDefaults.cardColors(containerColor = backgroundColor),
                     shape = bubbleShape,
-                    modifier = Modifier.widthIn(0.dp, maxWidth * 0.9f)
+                    modifier = Modifier
+                        .widthIn(0.dp, maxWidth * 0.9f)
+                        .combinedClickable(
+                            onClick = { /* Handle single click if needed */ },
+                            onLongClick = {
+                                clipboardManager.setText(AnnotatedString(chatMessage.text))
+                            }
+                        )
                 ) {
                     Text(
                         text = chatMessage.text,
@@ -166,13 +226,21 @@ fun ChatBubbleItem(
                 }
             }
         }
+        Text(
+            text = chatMessage.getTime(),
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.LightGray,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
     }
 }
 
 @Composable
 fun MessageInput(
     onSendMessage: (String) -> Unit,
-    resetScroll: () -> Unit = {}
+    resetScroll: () -> Unit = {},
+    simulateStreamingTalk: () -> Unit = {},
+    streamingTalk: (String) -> Unit = {},
 ) {
     var userMessage by rememberSaveable { mutableStateOf("") }
 
@@ -213,6 +281,42 @@ fun MessageInput(
             ) {
                 Icon(
                     Icons.Default.Send,
+                    contentDescription = stringResource(R.string.action_send),
+                    modifier = Modifier
+                )
+            }
+            IconButton(
+                onClick = {
+                    if (userMessage.isNotBlank()) {
+                        streamingTalk(userMessage)
+                        userMessage = ""
+                        resetScroll()
+                    }
+                },
+                modifier = Modifier
+                    .padding(start = 16.dp)
+                    .align(Alignment.CenterVertically)
+                    .fillMaxWidth()
+                    .weight(0.15f)
+            ) {
+                Icon(
+                    Icons.Default.PlayArrow,
+                    contentDescription = stringResource(R.string.action_send),
+                    modifier = Modifier
+                )
+            }
+            IconButton(
+                onClick = {
+                    simulateStreamingTalk()
+                },
+                modifier = Modifier
+                    .padding(start = 16.dp)
+                    .align(Alignment.CenterVertically)
+                    .fillMaxWidth()
+                    .weight(0.15f)
+            ) {
+                Icon(
+                    Icons.Default.Favorite,
                     contentDescription = stringResource(R.string.action_send),
                     modifier = Modifier
                 )

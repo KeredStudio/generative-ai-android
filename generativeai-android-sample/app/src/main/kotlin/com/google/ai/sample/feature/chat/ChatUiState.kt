@@ -36,4 +36,24 @@ class ChatUiState(
             _messages.add(newMessage)
         }
     }
+
+    fun updateStreamingTalk(outputContent: String) {
+        val lastMessage = _messages.lastOrNull()
+        lastMessage?.let {
+            val newMessage = lastMessage.apply { isPending = false }
+            newMessage.text = outputContent
+            _messages.removeLast()
+            _messages.add(newMessage)
+        }
+    }
+
+    fun simulateStreamingTalk() {
+        val lastMessage = _messages.lastOrNull()
+        lastMessage?.let {
+            val newMessage = lastMessage.apply { isPending = false }
+            newMessage.text += "!"
+            _messages.removeLast()
+            _messages.add(newMessage)
+        }
+    }
 }

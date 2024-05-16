@@ -16,15 +16,41 @@
 
 package com.google.ai.sample.feature.chat
 
+import com.google.ai.sample.BuildConfig
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 enum class Participant {
-    USER, MODEL, ERROR
+    USER {
+        override fun getName(): String {
+            return "王仁甫"
+        }
+    },
+    MODEL {
+        override fun getName(): String {
+            return BuildConfig.chatModelVersion
+        }
+    },
+    ERROR {
+        override fun getName(): String {
+            return BuildConfig.chatModelVersion
+        }
+    };
+
+    abstract fun getName(): String
 }
 
 data class ChatMessage(
     val id: String = UUID.randomUUID().toString(),
     var text: String = "",
     val participant: Participant = Participant.USER,
-    var isPending: Boolean = false
-)
+    var isPending: Boolean = false,
+    val currentTime: LocalDateTime = LocalDateTime.now()
+
+) {
+    fun getTime(): String {
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        return currentTime.format(formatter)
+    }
+}

@@ -45,7 +45,8 @@ fun MenuScreen(
     val menuItems = listOf(
         MenuItem("summarize", R.string.menu_summarize_title, R.string.menu_summarize_description),
         MenuItem("photo_reasoning", R.string.menu_reason_title, R.string.menu_reason_description),
-        MenuItem("chat", R.string.menu_chat_title, R.string.menu_chat_description)
+        MenuItem("chat", R.string.menu_chat_title, R.string.menu_chat_description),
+        MenuItem("chat2", R.string.chat2_title, R.string.chat2_desc)
     )
     LazyColumn(
         Modifier
